@@ -91,6 +91,12 @@ export function SignUp({ onSuccess }: SignUpProps) {
                   Back to Sign In
                 </Button>
               </Link>
+              <p className="mt-4 text-sm text-gray-600">
+                By signing up, you agree to our{' '}
+                <Link href="/privacy-policy" className="text-blue-600 hover:text-blue-800">
+                  Privacy Policy
+                </Link>
+              </p>
             </div>
           </div>
         </CardContent>
