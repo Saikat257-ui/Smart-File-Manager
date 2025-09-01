@@ -17,6 +17,12 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    
+
+    target: 'esnext', // Optimize for modern browsers
+    minify: 'esbuild', // Use esbuild for faster minification
+
+
     rollupOptions: {
       output: {
         manualChunks: {
@@ -39,9 +45,19 @@ export default defineConfig({
             '@radix-ui/react-toast',
             '@radix-ui/react-tooltip'
           ]
-        }
-      }
-    }
+        },
+        // Optimize chunk loading
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash][extname]'
+      },
+      // Optimize dependencies
+      treeshake: true
+    },
+    // Enable source map compression
+    sourcemap: true,
+    // Enable build caching
+    cssCodeSplit: true,
+    reportCompressedSize: false
   },
   server: {
     fs: {

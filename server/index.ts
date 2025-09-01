@@ -8,6 +8,19 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+
+// Add caching for static assets
+app.use((req, res, next) => {
+  if (req.url.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg)$/)) {
+    res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1 year
+  } else if (req.url.match(/\.(html)$/)) {
+    res.setHeader('Cache-Control', 'no-cache');
+  }
+  next();
+});
+
+
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
