@@ -88,6 +88,21 @@ export function GoogleDriveBrowser({ isOpen, onClose, onImport }: GoogleDriveBro
   ]);
   const { toast } = useToast();
 
+  
+
+  // Reset states when dialog is closed or when authentication state changes
+  useEffect(() => {
+    if (!isOpen || !isAuthenticated) {
+      setFiles([]);
+      setSelectedFiles(new Set());
+      setSearchQuery('');
+      setCurrentFolderId('root');
+      setFolderHistory([{ id: 'root', name: 'My Drive' }]);
+    }
+  }, [isOpen, isAuthenticated]);
+
+
+  
   // Check for Google Drive auth tokens on component mount
   useEffect(() => {
     if (isOpen) {
@@ -152,6 +167,25 @@ export function GoogleDriveBrowser({ isOpen, onClose, onImport }: GoogleDriveBro
     } finally {
       setLoading(false);
     }
+  };
+
+  const disconnectGoogleDrive = () => {
+    // Clear local storage
+    localStorage.removeItem('google_drive_tokens');
+    
+    // Reset states
+    setAccessToken('');
+    setIsAuthenticated(false);
+    setFiles([]);
+    setSelectedFiles(new Set());
+    setSearchQuery('');
+    setCurrentFolderId('root');
+    setFolderHistory([{ id: 'root', name: 'My Drive' }]);
+    
+    toast({
+      title: "Disconnected",
+      description: "Successfully disconnected from Google Drive",
+    });
   };
 
   const loadFiles = async (token?: string, folderId: string = 'root') => {

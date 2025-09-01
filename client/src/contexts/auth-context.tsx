@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js'
 import { authService } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
+import { useQueryClient } from '@tanstack/react-query'
 
 interface AuthContextType {
   user: User | null
@@ -240,14 +241,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
+
+
+  const queryClient = useQueryClient()
+  
   const disconnectGoogleDrive = () => {
+    // Clear all Google Drive related data from localStorage
     localStorage.removeItem('google_drive_tokens')
+    
+    // Update connection state
     setGoogleDriveConnected(false)
+
+    // Notify user
     toast({
       title: "Disconnected",
       description: "Google Drive has been disconnected"
     })
+
+    // Force clear any cached Google Drive data
+    queryClient.removeQueries({ queryKey: ['/api/google-drive'] })
+    
+    // Reset any imported file references
+    queryClient.invalidateQueries({ queryKey: ['/api/files'] })
   }
+
+  
 
   const value: AuthContextType = {
     user,
