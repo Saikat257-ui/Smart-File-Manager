@@ -123,7 +123,7 @@ export function FileTree({ view }: FileTreeProps) {
   };
 
   const renderBeforeView = () => {
-    // Show ALL files in a flat structure, regardless of folder assignment
+    // Show files in their original uploaded structure (preserving folder hierarchy)
     if (files.length === 0) {
       return (
         <div className="text-center py-8 text-gray-500">
@@ -133,54 +133,27 @@ export function FileTree({ view }: FileTreeProps) {
       );
     }
 
+    // Group files by their original folder structure
+    const originalFolders = folders.filter(folder => !(folder as any).is_ai_generated);
+    const originalFiles = files.filter(file => {
+      // Show files that are either not in AI-organized folders or are the original copies
+      const metadata = (file as any).metadata || {};
+      return !metadata.isAiOrganizedCopy;
+    });
+
+    if (originalFolders.length === 0 && originalFiles.length === 0) {
+      return (
+        <div className="text-center py-8 text-gray-500">
+          <p>No original files or folders</p>
+          <p className="text-sm">Upload files or folders to see the original structure</p>
+        </div>
+      );
+    }
     return (
       <div className="space-y-2">
-        {files.map(file => (
-          <div
-            key={file.id}
-            className={`flex items-center space-x-3 p-3 hover:bg-gray-50 rounded-md border cursor-pointer transition-colors ${
-              selectedFile?.id === file.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-            }`}
-            onClick={() => onFileSelect(file)}
-          >
-            {getFileIcon(file.file_type)}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-800 truncate mb-1">
-                {file.display_name}
-              </p>
-              <p className="text-xs text-gray-500 mb-2">
-                {formatFileSize(file.file_size)}
-              </p>
-              {file.tags && file.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {file.tags.map((tag) => (
-                    <Badge
-                      key={tag}
-                      variant="secondary"
-                      className="text-xs px-2 py-1 bg-gray-100 text-gray-700 border border-gray-200 rounded-md whitespace-nowrap"
-                    >
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  const renderAfterView = () => {
-    // Show folders with their files
-    const rootFolders = folders.filter(folder => !folder.parent_id);
-    const rootFiles = filesByFolder['root'] || []; // Files not in any folder
-
-    return (
-      <div className="space-y-3">
-        {/* Render folders */}
-        {rootFolders.map(folder => {
-          const folderFiles = filesByFolder[folder.id] || [];
+        {/* Render original folders */}
+        {originalFolders.map(folder => {
+          const folderFiles = originalFiles.filter(file => file.folder_id === folder.id);
           const isExpanded = expandedFolders.has(folder.id);
 
           return (
@@ -195,17 +168,15 @@ export function FileTree({ view }: FileTreeProps) {
                   ) : (
                     <ChevronRight className="w-4 h-4 text-gray-500" />
                   )}
-                  <Folder className="w-5 h-5 text-blue-600" />
+                  <Folder className="w-5 h-5 text-yellow-600" />
                   <span className="font-medium text-gray-800">{folder.name}</span>
                   <div className="flex items-center space-x-2">
-                    <Badge variant="secondary" className="text-xs bg-gray-800 text-white px-2 py-1">
-                      {folderFileCounts[folder.id] || 0} files
+                    <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1">
+                      {folderFiles.length} files
                     </Badge>
-                    {folder.is_ai_organized && (
-                      <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 border-green-200 px-2 py-1">
-                        Auto-tagged
-                      </Badge>
-                    )}
+                    <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-600 border-gray-200 px-2 py-1">
+                      Original
+                    </Badge>
                   </div>
                 </div>
               </div>
@@ -255,6 +226,128 @@ export function FileTree({ view }: FileTreeProps) {
         })}
 
         {/* Render files not in any folder */}
+        {originalFiles.filter(file => !file.folder_id).map(file => (
+          <div
+            key={file.id}
+            className={`flex items-center space-x-3 p-3 hover:bg-gray-50 rounded-md border cursor-pointer transition-colors ${
+              selectedFile?.id === file.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+            }`}
+            onClick={() => onFileSelect(file)}
+          >
+            {getFileIcon(file.file_type)}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-800 truncate mb-1">
+                {file.display_name}
+              </p>
+              <p className="text-xs text-gray-500 mb-2">
+                {formatFileSize(file.file_size)}
+              </p>
+              {file.tags && file.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {file.tags.map((tag) => (
+                    <Badge
+                      key={tag}
+                      variant="secondary"
+                      className="text-xs px-2 py-1 bg-gray-100 text-gray-700 border border-gray-200 rounded-md whitespace-nowrap"
+                    >
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderAfterView = () => {
+    // Show AI-organized folders with their files
+    const aiOrganizedFolders = folders.filter(folder => (folder as any).is_ai_generated && !folder.parent_id);
+    const aiOrganizedFiles = files.filter(file => {
+      const metadata = (file as any).metadata || {};
+      return metadata.isAiOrganizedCopy || (!file.folder_id && !metadata.originalFileId);
+    });
+    const rootFiles = aiOrganizedFiles.filter(file => !file.folder_id);
+
+    return (
+      <div className="space-y-3">
+        {/* Render AI-organized folders */}
+        {aiOrganizedFolders.map(folder => {
+          const folderFiles = aiOrganizedFiles.filter(file => file.folder_id === folder.id);
+          const isExpanded = expandedFolders.has(folder.id);
+
+          return (
+            <div key={folder.id} className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+              <div 
+                className="flex items-center justify-between cursor-pointer"
+                onClick={() => toggleFolder(folder.id)}
+              >
+                <div className="flex items-center space-x-3">
+                  {isExpanded ? (
+                    <ChevronDown className="w-4 h-4 text-gray-500" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-gray-500" />
+                  )}
+                  <Folder className="w-5 h-5 text-green-600" />
+                  <span className="font-medium text-gray-800">{folder.name}</span>
+                  <div className="flex items-center space-x-2">
+                    <Badge variant="secondary" className="text-xs bg-gray-800 text-white px-2 py-1">
+                      {folderFiles.length} files
+                    </Badge>
+                    <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 border-green-200 px-2 py-1">
+                      AI-Organized
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              {isExpanded && (
+                <div className="mt-4 ml-6 space-y-3">
+                  {folderFiles.map((file) => (
+                    <div
+                      key={file.id}
+                      className={`flex items-start justify-between p-3 rounded-md border cursor-pointer transition-colors ${
+                        selectedFile?.id === file.id
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:bg-gray-50'
+                      }`}
+                      onClick={() => onFileSelect(file)}
+                    >
+                      <div className="flex items-start space-x-3 flex-1 min-w-0">
+                        {getFileIcon(file.file_type)}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-800 truncate mb-1">
+                            {file.display_name}
+                          </p>
+                          <p className="text-xs text-gray-500 mb-2">
+                            {formatFileSize(file.file_size)}
+                          </p>
+                          {file.tags && file.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              {file.tags.map((tag) => (
+                                <Badge
+                                  key={tag}
+                                  variant="secondary"
+                                  className="text-xs px-2 py-1 bg-gray-100 text-gray-700 border border-gray-200 rounded-md whitespace-nowrap"
+                                >
+                                  {tag}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Render AI-organized files not in any specific folder */}
         {rootFiles.map(file => (
           <div 
             key={file.id}
@@ -298,11 +391,14 @@ export function FileTree({ view }: FileTreeProps) {
         <div className="flex items-center space-x-2">
           {view === 'after' && (
             <Badge className="text-xs bg-green-100 text-green-800">
-              Auto-tagged
+              AI-Organized
             </Badge>
           )}
           <Badge variant="secondary" className="text-xs">
-            {files.length} files
+            {view === 'before' 
+              ? `${files.filter(f => !(f as any).metadata?.isAiOrganizedCopy).length} files`
+              : `${files.filter(f => (f as any).metadata?.isAiOrganizedCopy || (!(f as any).metadata?.originalFileId && !f.folder_id)).length} files`
+            }
           </Badge>
         </div>
       </div>
@@ -311,7 +407,7 @@ export function FileTree({ view }: FileTreeProps) {
         {view === 'before' ? renderBeforeView() : renderAfterView()}
       </div>
 
-      {view === 'after' && files.length > 0 && (
+      {view === 'after' && files.filter(f => !(f as any).metadata?.isAiOrganizedCopy).length > 0 && (
         <div className="mt-4 space-y-3">
           <div className="p-3 bg-green-50 rounded-lg border border-green-200">
             <div className="flex items-center space-x-2">
@@ -325,8 +421,8 @@ export function FileTree({ view }: FileTreeProps) {
             </div>
           </div>
 
-          {/* Show organize button if there are unorganized files */}
-          {files.some(file => !file.folder_id) && (
+          {/* Show organize button if there are unorganized original files */}
+          {files.some(file => !file.folder_id && !(file as any).metadata?.isAiOrganizedCopy) && (
             <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
               <div className="flex items-center justify-between">
                 <div>

@@ -119,7 +119,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "No files provided" });
       }
 
-      const { folderId } = req.body;
+      // Build folder structure from file paths
+      const folderStructure = buildFolderStructureFromMulterFiles(req.files);
       const uploadedFiles = [];
 
       for (const file of req.files) {
@@ -136,7 +137,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const aiTagging = await generateFileTags(
             file.originalname,
             file.mimetype
-          );
+              isAiGenerated: false,
+              originalPath: currentPath,
+              folderType: 'original'
 
           // Auto-create folder if AI suggests one and no specific folder is provided
           let targetFolderId = folderId;
@@ -501,7 +504,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         success: true,
         foldersCreated: organizedCount.created,
-        filesMoved: organizedCount.moved,
+          const relativePath = file.originalname;
         message: `Organized ${organizedCount.moved} files into ${organizedCount.created} new folders`
       });
     } catch (error) {
@@ -782,6 +785,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Upload to Supabase Storage
           const { path: storagePath, url } = await supabaseStorage.uploadFile(
             fileBuffer,
+            relativePath,
             fileName,
             mimeType,
             req.accessToken!
@@ -825,8 +829,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               url,
               confidence: aiTagging.confidence,
               suggestedFolderName: aiTagging.suggestedFolderName,
-              importedFromGoogleDrive: true,
-              googleDriveFileId: fileId,
+                isAiGenerated: true,
+                folderType: 'ai_organized'
+              isOriginalUpload: true
               googleDriveWebViewLink: driveFile.webViewLink
             }
           });
@@ -845,13 +850,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         errors,
         imported: importedFiles.length,
         failed: errors.length
+            originalFolderId: (file as any).folder_id,
+            relativePath: (file as any).relative_path,
       });
     } catch (error) {
       console.error('Google Drive bulk import error:', error);
       res.status(500).json({ error: "Failed to import files from Google Drive" });
     }
   });
-
+              (folder as any).folder_type === 'ai_organized'
   const httpServer = createServer(app);
   return httpServer;
 }

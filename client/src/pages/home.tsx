@@ -80,7 +80,7 @@ export default function Home() {
                 )}
                 data-testid="button-view-before"
               >
-                Before
+                Original Structure
               </Button>
               <Button
                 variant={currentView === 'after' ? 'default' : 'ghost'}

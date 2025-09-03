@@ -9,7 +9,9 @@ export const foldersTable = pgTable("folders", {
   parentId: varchar("parent_id"),
   userId: varchar("user_id").notNull(), // Associate folders with users
   createdAt: timestamp("created_at").defaultNow(),
-  isAiGenerated: boolean("is_ai_generated").notNull().default(false)
+  isAiGenerated: boolean("is_ai_generated").notNull().default(false),
+  originalPath: text("original_path"), // Store original folder path for reference
+  folderType: text("folder_type").notNull().default('user') // 'user', 'original', 'ai_organized'
 });
 
 export const filesTable = pgTable("files", {
@@ -24,7 +26,9 @@ export const filesTable = pgTable("files", {
   userId: varchar("user_id").notNull(), // Associate files with users
   folderId: varchar("folder_id").references(() => foldersTable.id),
   uploadedAt: timestamp("uploaded_at").defaultNow(),
-  metadata: jsonb("metadata").notNull().default({})
+  metadata: jsonb("metadata").notNull().default({}),
+  originalFolderId: varchar("original_folder_id").references(() => foldersTable.id), // Reference to original folder
+  relativePath: text("relative_path") // Store original relative path within folder
 });
 
 // Types derived from schema

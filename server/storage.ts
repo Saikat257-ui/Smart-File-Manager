@@ -169,7 +169,9 @@ export class SupabaseStorage implements IStorage {
       name: insertFolder.name,
       parent_id: insertFolder.parentId || null,
       user_id: insertFolder.userId, // Now required in schema
-      is_ai_generated: typeof insertFolder.isAiGenerated === 'boolean' ? insertFolder.isAiGenerated : false
+      is_ai_generated: typeof insertFolder.isAiGenerated === 'boolean' ? insertFolder.isAiGenerated : false,
+      original_path: insertFolder.originalPath || null,
+      folder_type: insertFolder.folderType || 'user'
     };
 
     const { data, error } = await db
